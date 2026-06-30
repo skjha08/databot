@@ -100,6 +100,13 @@ async def run_with_skill(query, csv_filepath, skill):
     events = await runner.run_debug(f"Query: {query}\nDataset: {csv_filepath}", verbose=True)
     return extract_final_text(events)
 
+import sys
+import os
+
+# Add the project root to the python path so we can import security.guardrails
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+from security.guardrails import validate_input
+
 async def main():
     if len(sys.argv) < 3:
         print("Usage: python skill_agent.py <path_to_csv> <query>")
@@ -108,6 +115,11 @@ async def main():
     csv_filepath = sys.argv[1]
     query = " ".join(sys.argv[2:])
     
+    is_safe, reason = validate_input(query)
+    if not is_safe:
+        print(f"Error: Security violation - {reason}")
+        return
+
     skills = get_available_skills()
     if not skills:
         print("No skills found.")

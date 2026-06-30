@@ -4,6 +4,13 @@ import pandas as pd
 # The agent will only need to call load_dataset once, and the data will be reused!
 _GLOBAL_DF = None
 
+import sys
+import os
+
+# Add the project root to the python path so we can import security.guardrails
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+from security.guardrails import validate_tool_call
+
 def load_dataset(filepath: str) -> str:
     """
     Loads a CSV dataset from the specified filepath into memory.
@@ -15,6 +22,10 @@ def load_dataset(filepath: str) -> str:
     Returns:
         A string indicating success or failure.
     """
+    is_safe, reason = validate_tool_call('load_dataset', {'filepath': filepath})
+    if not is_safe:
+        return f"Error loading dataset: Security violation - {reason}"
+        
     global _GLOBAL_DF
     try:
         _GLOBAL_DF = pd.read_csv(filepath)
