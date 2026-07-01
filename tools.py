@@ -7,9 +7,9 @@ _GLOBAL_DF = None
 import sys
 import os
 
-# Add the project root to the python path so we can import security.guardrails
+# Add the project root to the python path so we can import security.policy_server
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-from security.guardrails import validate_tool_call
+from security.policy_server import check_tool_call
 
 def load_dataset(filepath: str) -> str:
     """
@@ -22,7 +22,7 @@ def load_dataset(filepath: str) -> str:
     Returns:
         A string indicating success or failure.
     """
-    is_safe, reason = validate_tool_call('load_dataset', {'filepath': filepath})
+    is_safe, reason = check_tool_call('load_dataset', {'filepath': filepath}, 'viewer')
     if not is_safe:
         return f"Error loading dataset: Security violation - {reason}"
         
@@ -41,6 +41,9 @@ def calculate_stats() -> str:
         A string containing the summary statistics of numerical columns.
     """
     global _GLOBAL_DF
+    is_safe, reason = check_tool_call('calculate_stats', {}, 'viewer')
+    if not is_safe:
+        return f"Error: Security violation - {reason}"
     if _GLOBAL_DF is None:
         return "Error: Dataset not loaded. Please call load_dataset first."
     
@@ -54,6 +57,9 @@ def check_missing_values() -> str:
         A string showing the count of missing values for each column.
     """
     global _GLOBAL_DF
+    is_safe, reason = check_tool_call('check_missing_values', {}, 'viewer')
+    if not is_safe:
+        return f"Error: Security violation - {reason}"
     if _GLOBAL_DF is None:
         return "Error: Dataset not loaded. Please call load_dataset first."
     
@@ -72,6 +78,9 @@ def get_correlation(col1: str, col2: str) -> str:
         A string containing the correlation result or an error message.
     """
     global _GLOBAL_DF
+    is_safe, reason = check_tool_call('get_correlation', {'col1': col1, 'col2': col2}, 'viewer')
+    if not is_safe:
+        return f"Error: Security violation - {reason}"
     if _GLOBAL_DF is None:
         return "Error: Dataset not loaded. Please call load_dataset first."
     

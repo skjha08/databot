@@ -1,6 +1,7 @@
 import sys
 import asyncio
 import os
+import json
 
 # Google ADK imports
 from google.adk import Agent
@@ -51,6 +52,26 @@ def extract_final_text(events) -> str:
                 return "".join(texts).strip()
     return str(events) # fallback if nothing found
 
+def parse_agent_response(text: str, skill_name: str = "unknown") -> dict:
+    """Parses JSON from the agent, falling back to a structured error if parsing fails."""
+    try:
+        clean_text = text.strip()
+        if clean_text.startswith("```json"):
+            clean_text = clean_text[7:]
+        elif clean_text.startswith("```"):
+            clean_text = clean_text[3:]
+        if clean_text.endswith("```"):
+            clean_text = clean_text[:-3]
+        return json.loads(clean_text.strip())
+    except Exception as e:
+        return {
+            "status": "error",
+            "skill_used": skill_name,
+            "tools_called": [],
+            "answer": f"Failed to parse agent output.",
+            "warnings": [f"Parse error: {str(e)}", f"Raw output: {text[:200]}"]
+        }
+
 async def route_to_skill(query, skills):
     """Uses a routing agent to pick the best skill based on descriptions."""
     prompt = f"Given the user query: '{query}', which of the following skills is the most appropriate? Return ONLY the exact skill name, nothing else.\n\n"
@@ -81,7 +102,14 @@ async def run_with_skill(query, csv_filepath, skill):
     Here is the specific procedure you must follow (from {skill['name']}):
     {skill['content']}
     
-    Once the procedure is complete, provide a concise summary.
+    Once the procedure is complete, you MUST output a JSON response matching this schema exactly. Do not output anything else besides this JSON block:
+    {{
+      "status": "success",
+      "skill_used": "{skill['name']}",
+      "tools_called": ["list", "of", "tool names", "you", "called"],
+      "answer": "your concise summary of the result",
+      "warnings": ["any warnings, such as columns with >30% missing values"]
+    }}
     """
     
     agent = Agent(
@@ -109,7 +137,7 @@ from security.guardrails import validate_input
 
 async def main():
     if len(sys.argv) < 3:
-        print("Usage: python skill_agent.py <path_to_csv> <query>")
+        print(json.dumps({"status": "error", "skill_used": "none", "tools_called": [], "answer": "Usage: python skill_agent.py <path_to_csv> <query>", "warnings": []}))
         sys.exit(1)
         
     csv_filepath = sys.argv[1]
@@ -117,24 +145,21 @@ async def main():
     
     is_safe, reason = validate_input(query)
     if not is_safe:
-        print(f"Error: Security violation - {reason}")
+        print(json.dumps({"status": "error", "skill_used": "none", "tools_called": [], "answer": f"Security violation - {reason}", "warnings": []}))
         return
 
     skills = get_available_skills()
     if not skills:
-        print("No skills found.")
+        print(json.dumps({"status": "error", "skill_used": "none", "tools_called": [], "answer": "No skills found.", "warnings": []}))
         return
         
-    print(f"Routing query: '{query}'")
     chosen_skill = await route_to_skill(query, skills)
     if chosen_skill:
-        print(f"--> Selected Skill: {chosen_skill['name']}\n")
-        print("Running specialist agent...")
-        result = await run_with_skill(query, csv_filepath, chosen_skill)
-        print("\n--- Final Summary ---")
-        print(result)
+        result_text = await run_with_skill(query, csv_filepath, chosen_skill)
+        result_json = parse_agent_response(result_text, chosen_skill['name'])
+        print(json.dumps(result_json))
     else:
-        print("No appropriate skill found for the query.")
+        print(json.dumps({"status": "error", "skill_used": "none", "tools_called": [], "answer": "No appropriate skill found for the query.", "warnings": []}))
 
 if __name__ == "__main__":
     asyncio.run(main())
