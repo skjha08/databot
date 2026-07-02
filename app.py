@@ -73,6 +73,21 @@ st.divider()  # st.divider() draws a horizontal rule — purely decorative
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+# API KEY INPUT  — st.text_input with type="password"
+# ══════════════════════════════════════════════════════════════════════════════
+# type="password" masks the characters so the key is never visible on screen.
+# st.caption() renders small muted helper text directly below the widget.
+# The widget is placed here — before the file uploader — so it's the first
+# thing the user sees and configures.
+api_key = st.text_input(
+    label="🔑 Enter your Gemini API Key",
+    type="password",
+    placeholder="AIza…",
+)
+st.caption("Get a free key at [ai.google.dev](https://ai.google.dev)")
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 # FILE UPLOADER  — st.file_uploader
 # ══════════════════════════════════════════════════════════════════════════════
 # st.file_uploader() renders a drag-and-drop upload zone.
@@ -120,6 +135,16 @@ analyze = st.button("🔍 Analyze", type="primary", use_container_width=True)
 if analyze:
 
     # ── Input validation (UI-level, before touching the agent) ────────────────
+
+    # Guard 0: missing API key
+    # Checked first so the user gets immediate feedback before we touch
+    # any file or agent logic. os.environ is set here — once — so every
+    # downstream library (google-adk, google-generativeai) picks it up
+    # automatically without any code changes in skill_agent.py.
+    if not api_key.strip():
+        st.error("Please enter your Gemini API key")
+        st.stop()
+    os.environ["GOOGLE_API_KEY"] = api_key.strip()
 
     # Guard 1: no file uploaded
     if uploaded_file is None:
