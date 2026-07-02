@@ -2,6 +2,16 @@
 
 DataBot is an intelligent, extensible, and secure AI data analyst. Powered by the Google Agentic Development Kit (ADK) and Gemini models, DataBot can dynamically route user queries to specialized skills, interact with underlying data analysis tools via the Model Context Protocol (MCP), and enforce strict security constraints during execution.
 
+## Demo
+
+
+![DataBot Demo](demo.gif)
+
+
+
+## Run the App
+streamlit run app.py
+
 ## Features
 
 - **Skill Routing**: Dynamically interprets user queries to load the most relevant context and procedures (e.g., Exploratory Data Analysis, Feature Engineering, Model Training).
